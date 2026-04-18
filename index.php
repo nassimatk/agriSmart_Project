@@ -94,7 +94,7 @@ $farmName = htmlspecialchars($_SESSION['farm_name']);
                 <i class="fa-solid fa-chart-line w-6"></i>
                 <span class="font-medium">Tableau de bord</span>
             </a>
-            <a href="#" class="flex items-center px-4 py-3 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-colors">
+            <a href="predictive_analysis.php" class="flex items-center px-4 py-3 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-colors">
                 <i class="fa-solid fa-brain w-6"></i>
                 <span class="font-medium">Analyse Prédictive</span>
             </a>
@@ -264,8 +264,11 @@ $farmName = htmlspecialchars($_SESSION['farm_name']);
                     <div class="space-y-6">
                         
                         <!-- Rapport Analyse Visuelle Predict -->
-                        <div class="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl shadow-sm p-6 border border-green-100 relative overflow-hidden">
-                            <h2 class="text-lg font-bold text-gray-800 mb-5 border-b border-green-200 pb-3"><i class="fa-solid fa-microscope mr-2 text-nature"></i>Rapport d'Analyse (IA)</h2>
+                        <div onclick="window.location.href='predictive_analysis.php'" class="cursor-pointer bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl shadow-sm p-6 border border-green-100 relative overflow-hidden group hover:shadow-md transition-all">
+                            <h2 class="text-lg font-bold text-gray-800 mb-5 border-b border-green-200 pb-3 flex justify-between items-center">
+                                <span><i class="fa-solid fa-microscope mr-2 text-nature"></i>Rapport d'Analyse (IA)</span>
+                                <i class="fa-solid fa-arrow-up-right-from-square text-xs text-nature opacity-0 group-hover:opacity-100 transition-opacity"></i>
+                            </h2>
                             
                             <div class="space-y-4">
                                 <!-- Prediction Rendement -->
