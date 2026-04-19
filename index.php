@@ -390,52 +390,38 @@ $farmName = htmlspecialchars($_SESSION['farm_name']);
 
                         let activeAlerts = '';
 
-                        // Logique de risque harmonisée avec l'IA
-                        let sensorRisque = 40;
-                        if (newHumAir > 70) sensorRisque = 85;
-                        else if (newHumAir > 60) sensorRisque = 60;
-                        
+                        // Logique de risque: dépend UNIQUEMENT de la prédiction de rendement
+                        let finalRisque = 50; // Valeur par défaut
                         const predLabel = current.prediction ? current.prediction.toUpperCase() : null;
-                        if (predLabel === 'HIGH') sensorRisque = Math.min(sensorRisque, 25);
-                        else if (predLabel === 'MED') sensorRisque = Math.max(45, sensorRisque);
-                        else if (predLabel === 'LOW') sensorRisque = Math.max(85, sensorRisque);
                         
-                        // Si l'IA a détecté une maladie, le risque est forcé à un niveau élevé
-                        // Si l'IA dit que c'est sain, on modère le risque du capteur
-                        let finalRisque = sensorRisque;
+                        if (predLabel === 'HIGH') {
+                            // Rendement élevé = Faible risque
+                            finalRisque = 20 + Math.round((newHumAir % 10) / 2); // Entre 20 et 25
+                        } else if (predLabel === 'MED') {
+                            // Rendement moyen = Risque modéré
+                            finalRisque = 45 + Math.round((newHumAir % 15) / 2); // Entre 45 et 52
+                        } else if (predLabel === 'LOW') {
+                            // Rendement faible = Risque élevé
+                            finalRisque = 85 + Math.round((newHumAir % 15) / 2); // Entre 85 et 92
+                        } else {
+                            // Fallback si pas de prédiction
+                            if (newHumAir > 70) finalRisque = 85;
+                            else if (newHumAir > 60) finalRisque = 60;
+                            else finalRisque = 40;
+                        }
+
+                        // Alertes basées sur l'IA Visuelle
                         if (window.lastAIResult) {
-                            // Calcul du risque basé sur l'analyse visuelle
-                            let aiRisque = 50;
                             if (window.lastAIResult.badge === 'red') {
-                                // 100% malade = 100 de risque
-                                aiRisque = Math.round(window.lastAIResult.confidence);
-                            } else if (window.lastAIResult.badge === 'green') {
-                                // 100% sain = 0 de risque
-                                aiRisque = Math.round(100 - window.lastAIResult.confidence);
-                            } else {
-                                aiRisque = 50;
-                            }
-                            
-                            // On fait une moyenne pondérée ou on prend le max si maladie détectée
-                            if (window.lastAIResult.badge === 'red') {
-                                finalRisque = Math.max(aiRisque, sensorRisque);
                                 activeAlerts += `<div class="bg-red-50 border-l-4 border-red-500 p-3 rounded shadow-sm transition-all">
                                     <p class="text-sm text-red-800 font-semibold"><i class="fa-solid fa-robot mr-2"></i>IA : Maladie détectée (${window.lastAIResult.disease}) !</p>
                                 </div>`;
-                            } else if (window.lastAIResult.badge === 'green') {
-                                // L'IA confirme que c'est sain malgré l'humidité
-                                finalRisque = Math.min(aiRisque + 10, sensorRisque); // Petit bonus de sécurité
-                            } else {
-                                finalRisque = (aiRisque + sensorRisque) / 2;
-                                if (window.lastAIResult.badge === 'orange') {
-                                    activeAlerts += `<div class="bg-orange-50 border-l-4 border-orange-500 p-3 rounded shadow-sm transition-all">
-                                        <p class="text-sm text-orange-800 font-semibold"><i class="fa-solid fa-robot mr-2"></i>IA : Stress modéré détecté</p>
-                                    </div>`;
-                                }
+                            } else if (window.lastAIResult.badge === 'orange') {
+                                activeAlerts += `<div class="bg-orange-50 border-l-4 border-orange-500 p-3 rounded shadow-sm transition-all">
+                                    <p class="text-sm text-orange-800 font-semibold"><i class="fa-solid fa-robot mr-2"></i>IA : Stress modéré détecté</p>
+                                </div>`;
                             }
                         }
-                        
-                        finalRisque = Math.round(finalRisque);
 
                         if (newHumAir > 70) {
                             activeAlerts += `<div class="bg-red-50 border-l-4 border-red-500 p-3 rounded shadow-sm transition-all">
@@ -838,20 +824,7 @@ $farmName = htmlspecialchars($_SESSION['farm_name']);
                         robotDiseaseStatus.className = `font-bold ${data.badge === 'green' ? 'text-green-400' : (data.badge === 'orange' ? 'text-orange-400' : 'text-red-500')}`;
                     }
 
-                    // Forcer une mise à jour immédiate du Risque Fongique basé sur l'IA
-                    if (risqueEl) {
-                        let aiRisque = 50;
-                        if (data.badge === 'red') {
-                            aiRisque = Math.round(data.confidence);
-                        } else if (data.badge === 'green') {
-                            aiRisque = Math.round(100 - data.confidence);
-                        }
-                        
-                        risqueEl.textContent = aiRisque;
-                        if (aiRisque >= 80) risqueEl.parentElement.className = 'text-3xl font-bold mt-1 text-red-600';
-                        else if (aiRisque >= 60) risqueEl.parentElement.className = 'text-3xl font-bold mt-1 text-orange-500';
-                        else risqueEl.parentElement.className = 'text-3xl font-bold mt-1 text-green-500';
-                    }
+                    // Les données de l'IA Visuelle ne modifient plus le risque global directement.
                 } else {
                     badge.innerHTML = 'Non analysé';
                     badge.className = 'px-2 py-1 bg-gray-100 text-gray-600 font-bold rounded text-xs';
