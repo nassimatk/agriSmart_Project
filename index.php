@@ -242,7 +242,7 @@ $farmName = htmlspecialchars($_SESSION['farm_name']);
                                 <span class="px-2 py-1 bg-green-100 text-green-700 text-xs font-semibold rounded"><i class="fa-solid fa-circle-check mr-1"></i>En Ligne</span>
                             </div>
                             <div class="relative h-64 bg-gray-900 w-full group">
-                                <img src="https://images.unsplash.com/photo-1592079927431-3f8cd5b306b3?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80" alt="Serre de tomates" class="w-full h-full object-cover opacity-70 group-hover:opacity-90 transition-opacity">
+                                <img id="robot-img" src="https://images.unsplash.com/photo-1592079927431-3f8cd5b306b3?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80" alt="Serre de tomates" class="w-full h-full object-cover opacity-70 group-hover:opacity-90 transition-opacity">
                                 
                                 <!-- Scan Line Overlay Simulation -->
                                 <div class="absolute inset-0 bg-gradient-to-b from-transparent via-green-400 to-transparent opacity-20 h-full w-full animate-scan pointer-events-none"></div>
@@ -250,7 +250,7 @@ $farmName = htmlspecialchars($_SESSION['farm_name']);
                                 <!-- Detection Overlay -->
                                 <div class="absolute bottom-4 left-4 bg-black/60 backdrop-blur-sm border border-gray-700 text-white p-3 rounded-lg flex flex-col space-y-1">
                                     <div class="text-sm font-medium"><i class="fa-solid fa-magnifying-glass-chart text-green-400 mr-2"></i>Analyse de rendement : <span id="robot-yield-status" class="font-bold text-green-400">Calcul...</span></div>
-                                    <div class="text-sm font-medium"><i class="fa-solid fa-shield-virus text-green-400 mr-2"></i>Détection de maladie : <span id="robot-disease-status" class="font-bold">Analyse...</span></div>
+                                    <div class="text-sm font-medium"><i id="robot-disease-icon" class="fa-solid fa-shield-virus text-green-400 mr-2"></i>Détection de maladie : <span id="robot-disease-status" class="font-bold">Analyse...</span></div>
                                 </div>
                                 
                                 <div class="absolute top-4 right-4 text-xs font-mono text-green-400 bg-black/50 px-2 py-1 rounded border border-green-900/50">
@@ -264,7 +264,7 @@ $farmName = htmlspecialchars($_SESSION['farm_name']);
                     <div class="space-y-6">
                         
                         <!-- Rapport Analyse Visuelle Predict -->
-                        <div onclick="window.location.href='predictive_analysis.php'" class="cursor-pointer bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl shadow-sm p-6 border border-green-100 relative overflow-hidden group hover:shadow-md transition-all">
+                        <div onclick="window.location.href='predictive_analysis.php' + (window.currentPhotoId ? '?photo_id=' + window.currentPhotoId : '')" class="cursor-pointer bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl shadow-sm p-6 border border-green-100 relative overflow-hidden group hover:shadow-md transition-all">
                             <h2 class="text-lg font-bold text-gray-800 mb-5 border-b border-green-200 pb-3 flex justify-between items-center">
                                 <span><i class="fa-solid fa-microscope mr-2 text-nature"></i>Rapport d'Analyse (IA)</span>
                                 <i class="fa-solid fa-arrow-up-right-from-square text-xs text-nature opacity-0 group-hover:opacity-100 transition-opacity"></i>
@@ -445,7 +445,7 @@ $farmName = htmlspecialchars($_SESSION['farm_name']);
                             if (yieldValue) yieldValue.innerHTML = `${predLabel} <span class="text-sm font-semibold text-gray-500">rendement estimé</span>`;
                             if (robotYieldStatus) {
                                 robotYieldStatus.textContent = predLabel;
-                                robotYieldStatus.className = pred === 'bonne' ? 'font-bold text-green-400' : 'font-bold text-orange-400';
+                                robotYieldStatus.className = predLabel === 'HIGH' ? 'font-bold text-green-400' : (predLabel === 'LOW' ? 'font-bold text-red-400' : 'font-bold text-orange-400');
                             }
                             
                             if (yieldBadge) {
@@ -762,12 +762,17 @@ $farmName = htmlspecialchars($_SESSION['farm_name']);
                         
                         html += `
                             <div class="group relative rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all border border-gray-100 bg-white">
-                                <a href="${photo.image_path}" target="_blank" class="block aspect-square">
+                                <div onclick="analyzePlant(${photo.id}); window.scrollTo(0, 0);" class="block aspect-square cursor-pointer">
                                     <img src="${photo.image_path}" alt="Plant" class="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-500">
-                                </a>
-                                <div class="p-3 border-t border-gray-50">
-                                    <p class="text-sm text-gray-800 font-medium truncate">${photo.description || 'Sans description'}</p>
-                                    <p class="text-xs text-gray-400 mt-1"><i class="fa-regular fa-clock mr-1"></i>${dateStr}</p>
+                                </div>
+                                <div class="p-3 border-t border-gray-50 flex justify-between items-center">
+                                    <div class="overflow-hidden">
+                                        <p class="text-sm text-gray-800 font-medium truncate">${photo.description || 'Sans description'}</p>
+                                        <p class="text-xs text-gray-400 mt-1"><i class="fa-regular fa-clock mr-1"></i>${dateStr}</p>
+                                    </div>
+                                    <button onclick="deletePhoto(${photo.id})" class="text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 h-8 w-8 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all flex-shrink-0 ml-2" title="Supprimer la photo">
+                                        <i class="fa-solid fa-trash text-[0.7rem]"></i>
+                                    </button>
                                 </div>
                             </div>
                         `;
@@ -784,6 +789,7 @@ $farmName = htmlspecialchars($_SESSION['farm_name']);
         }
 
         function analyzePlant(photoId = null) {
+            if (photoId) window.currentPhotoId = photoId;
             const badge = document.getElementById('leaf-health-badge');
             const report = document.getElementById('leaf-disease-report');
             
@@ -848,6 +854,28 @@ $farmName = htmlspecialchars($_SESSION['farm_name']);
                 }
             });
         });
+
+        function deletePhoto(id) {
+            if (!confirm('Êtes-vous sûr de vouloir supprimer cette photo ?')) return;
+            
+            fetch('delete_photo.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: id })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    loadPhotos();
+                } else {
+                    alert(data.message || 'Erreur lors de la suppression');
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                alert('Erreur de connexion.');
+            });
+        }
 </script>
 </body>
 </html>

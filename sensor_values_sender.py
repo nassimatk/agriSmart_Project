@@ -7,7 +7,7 @@ from datetime import datetime
 #  CONFIG  
 # =============================================
 API_URL = "http://127.0.0.1:8000/predict"
-DASHBOARD_API = "http://127.0.0.1/agrismart-dashboard/api_save_sensors.php"
+DASHBOARD_API = "http://127.0.0.1/agriSmart_Project/api_save_sensors.php"
 SEND_INTERVAL_SECONDS = 15  # 900=15mis
 # =============================================
 

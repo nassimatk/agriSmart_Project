@@ -17,8 +17,17 @@ $farmName = htmlspecialchars($_SESSION['farm_name']);
 // Récupérer la dernière lecture pour le rendement
 $latest_sensor = $conn->query("SELECT * FROM sensor_readings ORDER BY timestamp DESC LIMIT 1")->fetch_assoc();
 
-// Récupérer la dernière photo pour la santé du feuillage
-$latest_photo = $conn->query("SELECT * FROM plant_photos WHERE user_id = {$_SESSION['user_id']} ORDER BY upload_date DESC LIMIT 1")->fetch_assoc();
+// Récupérer la photo pour la santé du feuillage
+$photo_id = isset($_GET['photo_id']) ? (int)$_GET['photo_id'] : (isset($_SESSION['current_photo_id']) ? $_SESSION['current_photo_id'] : null);
+if ($photo_id) {
+    $stmt = $conn->prepare("SELECT * FROM plant_photos WHERE id = ? AND user_id = ?");
+    $stmt->bind_param("ii", $photo_id, $_SESSION['user_id']);
+    $stmt->execute();
+    $latest_photo = $stmt->get_result()->fetch_assoc();
+}
+if (empty($latest_photo)) {
+    $latest_photo = $conn->query("SELECT * FROM plant_photos WHERE user_id = {$_SESSION['user_id']} ORDER BY upload_date DESC LIMIT 1")->fetch_assoc();
+}
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -183,15 +192,15 @@ $latest_photo = $conn->query("SELECT * FROM plant_photos WHERE user_id = {$_SESS
                         $bgColor = 'bg-gray-100';
                         $desc = "Analyse des données environnementales en cours...";
                         
-                        if (strtolower($pred) === 'bonne') {
+                        if (strtolower($pred) === 'high') {
                             $statusColor = 'text-green-500';
                             $bgColor = 'bg-green-100';
                             $desc = "Les conditions actuelles sont optimales. Le rendement prévu dépasse les moyennes saisonnières de 12%.";
-                        } elseif (strtolower($pred) === 'moyenne') {
+                        } elseif (strtolower($pred) === 'med') {
                             $statusColor = 'text-orange-500';
                             $bgColor = 'bg-orange-100';
                             $desc = "Rendement stable. L'IA suggère d'optimiser le taux d'humidité pour atteindre le stade optimal.";
-                        } elseif (strtolower($pred) === 'basse') {
+                        } elseif (strtolower($pred) === 'low') {
                             $statusColor = 'text-red-500';
                             $bgColor = 'bg-red-100';
                             $desc = "Alerte de rendement ! Les variations thermiques récentes impactent le potentiel de croissance.";
@@ -201,7 +210,7 @@ $latest_photo = $conn->query("SELECT * FROM plant_photos WHERE user_id = {$_SESS
                         <div class="relative w-56 h-56 mb-8 group">
                             <svg class="w-full h-full transform -rotate-90 filter drop-shadow-md" viewBox="0 0 100 100">
                                 <circle cx="50" cy="50" r="44" fill="none" stroke="#e5e7eb" stroke-width="12"></circle>
-                                <circle cx="50" cy="50" r="44" fill="none" stroke="currentColor" stroke-width="12" stroke-dasharray="276" stroke-dashoffset="<?php echo (strtolower($pred) === 'bonne' ? '50' : (strtolower($pred) === 'moyenne' ? '120' : '200')); ?>" stroke-linecap="round" class="<?php echo $statusColor; ?> transition-all duration-1000"></circle>
+                                <circle cx="50" cy="50" r="44" fill="none" stroke="currentColor" stroke-width="12" stroke-dasharray="276" stroke-dashoffset="<?php echo (strtolower($pred) === 'high' ? '50' : (strtolower($pred) === 'med' ? '120' : '200')); ?>" stroke-linecap="round" class="<?php echo $statusColor; ?> transition-all duration-1000"></circle>
                             </svg>
                             <div class="absolute inset-0 flex flex-col items-center justify-center">
                                 <span class="text-[0.5rem] font-black text-gray-400 uppercase tracking-[0.3em] mb-1">Diagnostic Final</span>
@@ -304,16 +313,19 @@ $latest_photo = $conn->query("SELECT * FROM plant_photos WHERE user_id = {$_SESS
                                         <p class="text-[0.65rem] uppercase tracking-[0.2em] text-gray-400 font-bold">Diagnostic Pathogène</p>
                                     </div>
                                     <p class="text-3xl font-black text-gray-900 mb-2 tracking-tighter" id="health-status">Vérification...</p>
+                                    <div class="flex items-center gap-2 mb-1">
+                                        <i class="fa-solid fa-leaf text-nature-light text-xs"></i>
+                                        <p class="text-sm text-gray-600 font-bold uppercase tracking-tight" id="plant-type">Analyse...</p>
+                                    </div>
                                     <div class="flex items-center gap-2">
-                                        <i class="fa-solid fa-dna text-nature-light text-xs"></i>
-                                        <p class="text-sm text-nature font-black tracking-tight" id="health-disease"></p>
+                                        <i id="disease-icon" class="fa-solid fa-dna text-nature-light text-xs"></i>
+                                        <p class="text-sm text-nature font-black tracking-tight" id="health-disease">Analyse...</p>
                                     </div>
                                 </div>
                                 
                                 <div class="sm:w-32 bg-nature text-white rounded-3xl p-6 flex flex-col items-center justify-center text-center shadow-lg shadow-nature/20">
-                                    <p class="text-[0.5rem] font-bold uppercase tracking-widest mb-2 text-white/60">Health Score</p>
-                                    <span class="text-3xl font-black tracking-tighter" id="final-score">--</span>
-                                    <div class="mt-2 text-[0.6rem] font-bold px-2 py-0.5 bg-white/20 rounded-full uppercase">Optimal</div>
+                                    <p class="text-[0.5rem] font-bold uppercase tracking-widest mb-2 text-white/60">Confiance IA</p>
+                                    <span class="text-3xl font-black tracking-tighter"><span id="final-score">--</span>%</span>
                                 </div>
                             </div>
                             
@@ -424,7 +436,11 @@ $latest_photo = $conn->query("SELECT * FROM plant_photos WHERE user_id = {$_SESS
             
             bar.style.width = '100%';
 
-            fetch('analyze_photo.php')
+            let url = 'analyze_photo.php';
+            const photoId = <?= isset($_GET['photo_id']) ? (int)$_GET['photo_id'] : 'null' ?>;
+            if (photoId) url += '?photo_id=' + photoId;
+
+            fetch(url)
             .then(res => res.json())
             .then(data => {
                 setTimeout(() => {
@@ -433,7 +449,17 @@ $latest_photo = $conn->query("SELECT * FROM plant_photos WHERE user_id = {$_SESS
                         results.classList.remove('hidden');
                         
                         document.getElementById('health-status').textContent = data.status.toUpperCase();
+                        document.getElementById('plant-type').textContent = data.plant;
                         document.getElementById('health-disease').textContent = data.disease;
+                        const icon = document.getElementById('disease-icon');
+                        const diseaseText = document.getElementById('health-disease');
+                        if (data.badge === 'red') {
+                            icon.className = 'fa-solid fa-virus-covid text-red-500 text-sm';
+                            diseaseText.className = 'text-sm text-red-600 font-black tracking-tight';
+                        } else {
+                            icon.className = 'fa-solid fa-shield-check text-green-500 text-sm';
+                            diseaseText.className = 'text-sm text-green-600 font-black tracking-tight';
+                        }
                         document.getElementById('final-score').textContent = data.health_score;
                         
                         const greenText = document.getElementById('green-ratio');
